@@ -1,0 +1,62 @@
+image: public.ecr.aws/docker/library/node:16
+
+stages:
+  - test
+  - build
+
+.cache:
+  cache: &cache
+    key:
+      files:
+        - yarn.lock
+    paths:
+      - node_modules/
+
+yarn:install:
+  stage: .pre
+  script:
+    - yarn install --prefer-offline --no-audit --progress=false
+  cache:
+    <<: *cache
+    policy: push
+  rules:
+    - changes:
+      - yarn.lock
+    - when: manual
+      allow_failure: true
+
+testing:
+  stage: test
+  script:
+    - yarn lint
+    - yarn test
+  cache:
+    <<: *cache
+    policy: pull
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      when: manual
+
+build:
+  stage: build
+  script:
+    - npx solcjs --include-path ./node_modules/ --base-path . --abi ./contracts/*.sol -o ./builds/
+    - yarn docs
+    - yarn coverage
+  cache:
+    <<: *cache
+    policy: pull
+  artifacts:
+    paths:
+      - ./builds/
+      - ./docs/
+      - ./coverage/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      when: manual
