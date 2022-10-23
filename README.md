@@ -8,6 +8,7 @@
 
 
 ## Notes
+
 - When creating a contract, we assign `address` of the `donee (recipient)`
 
 - Note that tokens are transferred to the donee only after the specified completion time has **passed**.
